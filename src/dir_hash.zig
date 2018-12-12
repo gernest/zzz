@@ -6,6 +6,7 @@ const Sha3_256 = std.crypto.Sha3_256;
 const warn = std.debug.warn;
 const Dir = std.os.Dir;
 const Entry = std.os.Dir.Entry;
+const base64 = std.base64.standard_encoder;
 
 const String = std.ArrayList(u8);
 
@@ -13,11 +14,13 @@ pub fn hashDir(allocator: *std.mem.Allocator, output_buf: *std.Buffer, full_path
     var buf = &try std.Buffer.init(allocator, "");
     defer buf.deinit();
     var stream = io.BufferOutStream.init(buf);
-    try walkTree(allocator, &stream.stream, path_src);
+    try walkTree(allocator, &stream.stream, full_path);
     var h = Sha3_256.init();
     var out: [Sha3_256.digest_length]u8 = undefined;
-    h.update(content);
+    h.update(buf.toSlice());
     h.final(out[0..]);
+    try output_buf.resize(std.base64.Base64Encoder.calcSize(out.len));
+    base64.encode(output_buf.toSlice(), out[0..]);
 }
 
 fn walkTree(allocator: *std.mem.Allocator, stream: var, full_path: []const u8) anyerror!void {
@@ -57,8 +60,7 @@ test "list" {
     var allocator = std.debug.global_allocator;
     var buf = &try std.Buffer.init(allocator, "");
     defer buf.deinit();
-    var stream = io.BufferOutStream.init(buf);
-    try walkTree(allocator, &stream.stream, path_src);
+    try hashDir(allocator, buf, path_src);
 
-    warn("\n{}", buf.toSlice());
+    warn("\nh1:{}", buf.toSlice());
 }
