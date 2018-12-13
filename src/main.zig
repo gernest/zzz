@@ -9,7 +9,6 @@ const warn = std.debug.warn;
 const Dir = std.os.Dir;
 const Entry = std.os.Dir.Entry;
 const base64 = std.base64.standard_encoder;
-const debug = std.debug;
 
 fn hashDir(allocator: *std.mem.Allocator, output_buf: *std.Buffer, full_path: []const u8) !void {
     var buf = &try std.Buffer.init(allocator, "");
@@ -103,7 +102,7 @@ pub fn main() !void {
             return;
         }
         try hashDir(allocator, buf, pos[0]);
-        debug.warn("{}", buf.toSlice());
+        warn("{}", buf.toSlice());
         return;
     }
 
