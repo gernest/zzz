@@ -11,7 +11,7 @@ const Entry = std.os.Dir.Entry;
 const base64 = std.base64.standard_encoder;
 const debug = std.debug;
 
-pub fn hashDir(allocator: *std.mem.Allocator, output_buf: *std.Buffer, full_path: []const u8) !void {
+fn hashDir(allocator: *std.mem.Allocator, output_buf: *std.Buffer, full_path: []const u8) !void {
     var buf = &try std.Buffer.init(allocator, "");
     defer buf.deinit();
     var stream = io.BufferOutStream.init(buf);
@@ -67,11 +67,15 @@ pub fn main() !void {
 
     // First we specify what parameters our program can take.
     const params = comptime []clap.Param([]const u8){
-        clap.Param([]const u8).flag(
-            "Display this help and exit.",
-            clap.Names.both("help"),
-        ),
         clap.Param([]const u8).option(
+            "Base64 encoded hash of the directory",
+            clap.Names.both("hash"),
+        ),
+        clap.Param([]const u8).flag(
+            "Verifies the hash provided by --hash flag against the directory",
+            clap.Names.both("verify"),
+        ),
+        clap.Param([]const u8).flag(
             "calculates and prints checksum of a directory",
             clap.Names.both("sum"),
         ),
@@ -87,24 +91,40 @@ pub fn main() !void {
 
     // Consume the exe arg.
     const exe = try iter.next();
-
+    var buf = &try std.Buffer.init(allocator, "");
+    defer buf.deinit();
     // Finally we can parse the arguments
     var args = try clap.ComptimeClap([]const u8, params).parse(allocator, clap.args.OsIterator.Error, iter);
     defer args.deinit();
-
-    // clap.help is a function that can print a simple help message, given a
-    // slice of Param([]const u8). There is also a helpEx, which can print a
-    // help message for any Param, but it is more verbose to call.
-    if (args.flag("--help"))
-        return try clap.help(stdout, params);
-    if (args.option("--sum")) |n| {
-        return try sum(allocator, n);
+    if (args.flag("--sum")) {
+        const pos = args.positionals();
+        if (pos.len != 1) {
+            warn("missing dir path");
+            return;
+        }
+        try hashDir(allocator, buf, pos[0]);
+        debug.warn("{}", buf.toSlice());
+        return;
     }
-}
 
-fn sum(allocator: *std.mem.Allocator, path_src: []const u8) !void {
-    var buf = &try std.Buffer.init(allocator, "");
-    defer buf.deinit();
-    try hashDir(allocator, buf, path_src);
-    debug.warn("{}\n", buf.toSlice());
+    if (args.flag("--verify")) {
+        const pos = args.positionals();
+        if (pos.len != 1) {
+            warn("missing dir path");
+            return;
+        }
+        var h = args.option("--hash");
+        if (h == null) {
+            warn("missing --hash flag value");
+            return;
+        }
+        try hashDir(allocator, buf, pos[0]);
+        if (buf.eql(h.?)) {
+            warn("pass");
+        } else {
+            warn("failed validation expected want {} got {}", h, buf.toSlice());
+        }
+        return;
+    }
+    return try clap.help(stdout, params);
 }
