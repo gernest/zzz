@@ -32,6 +32,9 @@ fn walkTree(allocator: *std.mem.Allocator, stream: var, full_path: []const u8) a
     var out: [Sha3_256.digest_length]u8 = undefined;
 
     while (try dir.next()) |entry| {
+        if (entry.name[0] == '.' or mem.eql(u8, entry.name, "zig-cache")) {
+            continue;
+        }
         try full_entry_buf.resize(full_path.len + entry.name.len + 1);
         const full_entry_path = full_entry_buf.toSlice();
         mem.copy(u8, full_entry_path, full_path);
