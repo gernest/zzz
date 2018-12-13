@@ -1,6 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const io = std.io;
+const json = std.json;
 const path = std.os.path;
 const Sha3_256 = std.crypto.Sha3_256;
 const warn = std.debug.warn;
@@ -64,3 +65,8 @@ test "list" {
 
     warn("\nh1:{}", buf.toSlice());
 }
+
+const Hash = struct {
+    name: []const u8,
+    hash: []const u8,
+};
